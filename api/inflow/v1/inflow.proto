@@ -1,0 +1,89 @@
+syntax = "proto3";
+
+package inflow.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "ReservoirFloodPrediction/api/inflow/v1;v1";
+option java_multiple_files = true;
+option java_package = "api.inflow.v1";
+
+// InflowService 定义入库洪水分析相关的接口
+service InflowService {
+  // 模拟历史降雨数据
+  rpc SimulateRainfall (SimulateRainfallRequest) returns (SimulateRainfallReply) {
+    option (google.api.http) = {
+      post: "/v1/inflow/simulate-rainfall",
+      body: "*"
+    };
+  }
+
+  // 预测未来降雨数据 (基于模拟的历史数据)
+  rpc PredictRainfall (PredictRainfallRequest) returns (PredictRainfallReply) {
+    option (google.api.http) = {
+      post: "/v1/inflow/predict-rainfall",
+      body: "*"
+    };
+  }
+
+  // 计算入库洪水总量 (基于模拟和预测的降雨)
+  rpc CalculateInflowVolume (CalculateInflowVolumeRequest) returns (CalculateInflowVolumeReply) {
+    option (google.api.http) = {
+      post: "/v1/inflow/calculate-volume",
+      body: "*"
+    };
+  }
+}
+
+// 时间序列数据点
+message TimeSeriesDataPoint {
+  google.protobuf.Timestamp time = 1; // 时间点
+  double value = 2;                   // 值 (例如: 降雨量 mm)
+}
+
+// 流量过程线数据点
+message HydrographDataPoint {
+  google.protobuf.Timestamp time = 1; // 时间点
+  double flow_rate = 2;               // 流量 (单位: m³/s)
+}
+
+// --- 模拟降雨 --- 
+message SimulateRainfallRequest {
+  string rain_pattern_type = 1; // 雨型 (例如 "heavy_burst", "moderate_prolonged", "light_drizzle")
+  // 可以添加其他参数，比如指定模拟的起始时间等
+}
+
+message SimulateRainfallReply {
+  repeated TimeSeriesDataPoint past_24h_rainfall = 1; // 过去24小时模拟降雨 (按小时)
+  repeated TimeSeriesDataPoint past_15d_rainfall = 2; // 过去15天模拟降雨 (按天)
+  string message = 3;
+}
+
+// --- 预测降雨 --- 
+message PredictRainfallRequest {
+  // 将模拟的历史数据传给后端用于预测
+  repeated TimeSeriesDataPoint past_24h_rainfall = 1;
+  // repeated TimeSeriesDataPoint past_15d_rainfall = 2; // 看预测逻辑是否需要
+}
+
+message PredictRainfallReply {
+  repeated TimeSeriesDataPoint next_72h_rainfall = 1; // 未来72小时预测降雨 (按小时或按天，取决于后端实现)
+  string message = 2;
+}
+
+// --- 计算入库洪量 --- 
+message CalculateInflowVolumeRequest {
+  string basin_id = 1; // 流域ID (虽然目前只有一个，但加上更规范)
+  repeated TimeSeriesDataPoint rainfall_data = 2; // 完整的降雨数据 (模拟+预测)
+  // 可以添加其他计算参数，如 产流系数 (如果不由后端固定的话)
+  // double runoff_coefficient = 3;
+}
+
+message CalculateInflowVolumeReply {
+  double total_inflow_volume = 1; // 计算出的总入库洪量 (单位: 万立方米)
+  string message = 3;
+  repeated HydrographDataPoint hydrograph_data = 4; // <--- 新增：入库流量过程线数据
+  double peak_flow = 5;                      // <--- 新增：洪峰流量 (m³/s)
+  google.protobuf.Timestamp peak_flow_time = 6; // <--- 新增：洪峰时间
+} 

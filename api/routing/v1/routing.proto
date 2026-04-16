@@ -1,0 +1,79 @@
+syntax = "proto3";
+
+package api.routing.v1;
+
+import "google/protobuf/timestamp.proto";
+import "api/inflow/v1/inflow.proto"; // 引用入库流量定义
+import "google/api/annotations.proto"; // 导入 HTTP 注解需要的包
+
+option go_package = "ReservoirFloodPrediction/api/routing/v1;v1";
+
+// --- 数据结构 ---
+
+// 水库曲线上的一个点 (可用于库容曲线和泄流曲线)
+message CurvePoint {
+    double level = 1; // 水位 (m)
+    double value = 2; // 对应的值 (库容 10^4 m³ 或 流量 m³/s)
+}
+
+// 水库特征水位
+message CharacteristicLevels {
+    double flood_limit_water_level = 1; // 汛限水位 (m)
+    double normal_water_level = 2;      // 正常蓄水位 (m)
+    double design_flood_level = 3;      // 设计洪水位 (m)
+    double check_flood_level = 4;       // 校核洪水位 (m)
+    // 可以根据需要添加其他水位
+}
+
+// 水库参数定义
+message ReservoirParams {
+    string id = 1;                         // 水库唯一 ID
+    string name = 2;                       // 水库名称
+    repeated CurvePoint storage_curve = 3; // 库容曲线 (水位-库容) Z~W
+    repeated CurvePoint discharge_curve = 4; // 泄流能力曲线 (水位-下泄流量) Z~Q泄
+    CharacteristicLevels levels = 5;       // 特征水位
+    double downstream_safe_discharge = 6;  // (可选) 下游安全泄量 (m³/s)
+}
+
+// 调洪演算结果中的一个时间点数据
+message RoutingResultPoint {
+    google.protobuf.Timestamp time = 1; // 时间点
+    double water_level = 2;             // 水库水位 (m)
+    double storage_volume = 3;          // 水库库容 (10^4 m³)
+    double outflow = 4;                 // 出库流量 (m³/s)
+    double inflow = 5;                  // (可选) 对应的入库流量，方便绘图
+}
+
+// 调洪演算请求
+message FloodRoutingRequest {
+    string reservoir_id = 1;                      // 要计算的水库 ID
+    repeated inflow.v1.HydrographDataPoint inflow_hydrograph = 2; // 输入的入库流量过程线
+    double initial_water_level = 3;             // 初始水库水位 (m)
+}
+
+// 调洪演算响应
+message FloodRoutingReply {
+    repeated RoutingResultPoint results = 1; // 调洪结果过程线
+    double peak_water_level = 2;             // 最高水位 (m)
+    google.protobuf.Timestamp peak_water_level_time = 3; // 最高水位出现时间
+    double peak_outflow = 4;                 // 最大出库流量 (m³/s)
+    google.protobuf.Timestamp peak_outflow_time = 5; // 最大出库流量出现时间
+    double max_storage_volume = 6;           // 最大库容 (10^4 m³)
+    string message = 7;                      // 状态或错误信息
+}
+
+// --- 服务定义 ---
+service RoutingService {
+    // 执行水库调洪演算
+    rpc RouteFlood (FloodRoutingRequest) returns (FloodRoutingReply){
+        // 添加 HTTP 路由注解
+        option (google.api.http) = {
+            post: "/v1/routing/route-flood" // 定义 HTTP POST 路由
+            body: "*"                     // 将请求体所有字段映射到 RPC 请求
+        };
+    }
+
+    // (可选) 获取可用水库列表及其参数
+    // rpc ListReservoirs (ListReservoirsRequest) returns (ListReservoirsReply);
+    // rpc GetReservoirParams (GetReservoirParamsRequest) returns (ReservoirParams);
+}

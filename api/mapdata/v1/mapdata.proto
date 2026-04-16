@@ -1,0 +1,140 @@
+syntax = "proto3";
+
+package mapdata.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/wrappers.proto"; // 导入 wrappers 用于 optional ID
+
+option go_package = "ReservoirFloodPrediction/api/mapdata/v1;v1";
+option java_multiple_files = true;
+option java_package = "api.mapdata.v1";
+
+// CurvePoint 定义水位和对应值的点
+message CurvePoint {
+	double level = 1; // 水位 (m)
+	double value = 2; // 对应的值 (库容 - 万m³, 或 流量 - m³/s)
+	// 在更新时，可以通过 ID 识别现有记录，或 ID 为空表示新增
+	google.protobuf.UInt64Value id = 3; // 可选的数据库记录 ID
+}
+
+// MapData 服务，提供地图所需的数据
+service MapData {
+	// 获取流域列表
+	rpc ListBasins (ListBasinsRequest) returns (ListBasinsReply) {
+		option (google.api.http) = {
+			get: "/v1/map/basins"
+		};
+	}
+	// 获取水库/雨量站列表
+	rpc ListReservoirs (ListReservoirsRequest) returns (ListReservoirsReply) {
+		option (google.api.http) = {
+			get: "/v1/map/reservoirs"
+		};
+	}
+
+	// --- 新增 RPC ---
+
+	// 生成指定水库的模拟曲线数据
+	rpc GenerateCurves (GenerateCurvesRequest) returns (GenerateCurvesReply) {
+		option (google.api.http) = {
+			post: "/v1/reservoirs/{reservoir_id}/generate-curves"
+			body: "*"
+		};
+	}
+
+	// 获取指定水库的库容和泄流曲线数据
+	rpc GetCurves (GetCurvesRequest) returns (GetCurvesReply) {
+		option (google.api.http) = {
+			get: "/v1/reservoirs/{reservoir_id}/curves"
+		};
+	}
+
+	// 更新指定水库的库容和泄流曲线数据
+	rpc UpdateCurves (UpdateCurvesRequest) returns (UpdateCurvesReply) {
+		option (google.api.http) = {
+			put: "/v1/reservoirs/{reservoir_id}/curves"
+			body: "*"
+		};
+	}
+	// --- 结束新增 ---
+}
+
+// BasinInfo 消息结构，对应业务层的 BasinInfo
+message BasinInfo {
+	uint64 id = 1;              // 添加 ID 字段
+	string basin_name = 2;
+	double control_area = 3;
+	double main_stream_slope = 4;
+}
+
+// ReservoirInfo 消息结构，对应 Service 层 ListReservoirs 返回的列表项
+// (原 Reservoir 消息重命名)
+message ReservoirInfo {
+	uint64 id = 1;
+	string name = 2;
+	double latitude = 3;
+	double longitude = 4;
+	double control_area = 5; // 作为雨量站的控制面积
+	double weight = 6;       // 作为雨量站的权重
+}
+
+// --- ListBasins 相关消息 ---
+message ListBasinsRequest {
+	// 可以为空，表示获取所有
+}
+
+message ListBasinsReply {
+	repeated BasinInfo basins = 1;
+}
+
+// --- ListReservoirs 相关消息 ---
+message ListReservoirsRequest {
+	// 可以为空，表示获取所有
+}
+
+message ListReservoirsReply {
+	repeated ReservoirInfo reservoirs = 1; // 使用 ReservoirInfo
+}
+
+// --- GenerateCurves 相关消息 ---
+message GenerateCurvesRequest {
+	string reservoir_id = 1; // 水库 ID
+}
+
+message GenerateCurvesReply {
+	string message = 1; // 成功或失败的消息
+}
+
+// --- GetCurves 相关消息 ---
+message GetCurvesRequest {
+	string reservoir_id = 1; // 水库 ID
+}
+
+message GetCurvesReply {
+	repeated CurvePoint storage_curve = 1;
+	repeated CurvePoint discharge_curve = 2;
+}
+
+// --- UpdateCurves 相关消息 ---
+message UpdateCurvesRequest {
+	string reservoir_id = 1; // 水库 ID
+	repeated CurvePoint storage_curve = 2;
+	repeated CurvePoint discharge_curve = 3;
+}
+
+message UpdateCurvesReply {
+	string message = 1; // 成功或失败的消息
+}
+
+/* // 如果不再需要，可以删除 GetMapElements 相关消息
+// 获取地图元素的请求
+message GetMapElementsRequest {
+	// 可以保留为空，表示获取所有
+}
+
+// 获取地图元素的响应
+message GetMapElementsReply {
+	repeated BasinInfo basin_infos = 1;
+	repeated Reservoir reservoirs = 2; // 注意这里原来用的是 Reservoir
+}
+*/ 

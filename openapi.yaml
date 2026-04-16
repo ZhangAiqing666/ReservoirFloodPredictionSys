@@ -1,0 +1,265 @@
+# Generated with protoc-gen-openapi
+# https://github.com/google/gnostic/tree/master/cmd/protoc-gen-openapi
+
+openapi: 3.0.3
+info:
+    title: MapData API
+    description: MapData 服务，提供地图所需的数据
+    version: 0.0.1
+paths:
+    /v1/map/basins:
+        get:
+            tags:
+                - MapData
+            description: 获取流域列表
+            operationId: MapData_ListBasins
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListBasinsReply'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/map/reservoirs:
+        get:
+            tags:
+                - MapData
+            description: 获取水库/雨量站列表
+            operationId: MapData_ListReservoirs
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListReservoirsReply'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/reservoirs/{reservoirId}/curves:
+        get:
+            tags:
+                - MapData
+            description: 获取指定水库的库容和泄流曲线数据
+            operationId: MapData_GetCurves
+            parameters:
+                - name: reservoirId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetCurvesReply'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+        put:
+            tags:
+                - MapData
+            description: 更新指定水库的库容和泄流曲线数据
+            operationId: MapData_UpdateCurves
+            parameters:
+                - name: reservoirId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/UpdateCurvesRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/UpdateCurvesReply'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/reservoirs/{reservoirId}/generate-curves:
+        post:
+            tags:
+                - MapData
+            description: 生成指定水库的模拟曲线数据
+            operationId: MapData_GenerateCurves
+            parameters:
+                - name: reservoirId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/GenerateCurvesRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GenerateCurvesReply'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+components:
+    schemas:
+        BasinInfo:
+            type: object
+            properties:
+                id:
+                    type: string
+                basinName:
+                    type: string
+                controlArea:
+                    type: number
+                    format: double
+                mainStreamSlope:
+                    type: number
+                    format: double
+            description: BasinInfo 消息结构，对应业务层的 BasinInfo
+        CurvePoint:
+            type: object
+            properties:
+                level:
+                    type: number
+                    format: double
+                value:
+                    type: number
+                    format: double
+                id:
+                    type: string
+                    description: 在更新时，可以通过 ID 识别现有记录，或 ID 为空表示新增
+            description: CurvePoint 定义水位和对应值的点
+        GenerateCurvesReply:
+            type: object
+            properties:
+                message:
+                    type: string
+        GenerateCurvesRequest:
+            type: object
+            properties:
+                reservoirId:
+                    type: string
+            description: '--- GenerateCurves 相关消息 ---'
+        GetCurvesReply:
+            type: object
+            properties:
+                storageCurve:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/CurvePoint'
+                dischargeCurve:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/CurvePoint'
+        GoogleProtobufAny:
+            type: object
+            properties:
+                '@type':
+                    type: string
+                    description: The type of the serialized message.
+            additionalProperties: true
+            description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
+        ListBasinsReply:
+            type: object
+            properties:
+                basins:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/BasinInfo'
+        ListReservoirsReply:
+            type: object
+            properties:
+                reservoirs:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/ReservoirInfo'
+        ReservoirInfo:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                latitude:
+                    type: number
+                    format: double
+                longitude:
+                    type: number
+                    format: double
+                controlArea:
+                    type: number
+                    format: double
+                weight:
+                    type: number
+                    format: double
+            description: |-
+                ReservoirInfo 消息结构，对应 Service 层 ListReservoirs 返回的列表项
+                 (原 Reservoir 消息重命名)
+        Status:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
+                    format: int32
+                message:
+                    type: string
+                    description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
+                details:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/GoogleProtobufAny'
+                    description: A list of messages that carry the error details.  There is a common set of message types for APIs to use.
+            description: 'The `Status` type defines a logical error model that is suitable for different programming environments, including REST APIs and RPC APIs. It is used by [gRPC](https://github.com/grpc). Each `Status` message contains three pieces of data: error code, error message, and error details. You can find out more about this error model and how to work with it in the [API Design Guide](https://cloud.google.com/apis/design/errors).'
+        UpdateCurvesReply:
+            type: object
+            properties:
+                message:
+                    type: string
+        UpdateCurvesRequest:
+            type: object
+            properties:
+                reservoirId:
+                    type: string
+                storageCurve:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/CurvePoint'
+                dischargeCurve:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/CurvePoint'
+            description: '--- UpdateCurves 相关消息 ---'
+tags:
+    - name: MapData

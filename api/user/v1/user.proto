@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+package user.v1; // 包名，通常是 <模块名>.<版本号>
+
+import "google/api/annotations.proto"; // 用于生成 HTTP 路由规则
+import "validate/validate.proto";      // 用于定义字段验证规则
+
+option go_package = "ReservoirFloodPrediction/api/user/v1;v1"; // 生成 Go 代码的包路径和别名
+// 确保 ReservoirFloodPrediction 与你的 go.mod 文件中的 module 名一致
+
+// UserService 定义用户服务接口
+service UserService {
+  // 用户注册接口
+  rpc Register (RegisterRequest) returns (RegisterReply) {
+    // 定义 HTTP 路由规则：POST /v1/register
+    option (google.api.http) = {
+      post: "/v1/register",
+      body: "*" // 请求体包含所有字段
+    };
+  }
+
+  // 用户登录接口
+  rpc Login (LoginRequest) returns (LoginReply) {
+    // 定义 HTTP 路由规则：POST /v1/login
+    option (google.api.http) = {
+      post: "/v1/login",
+      body: "*"
+    };
+  }
+}
+
+// 用户注册请求消息
+message RegisterRequest {
+  // 用户名，使用 validate 规则限制最小长度为 3，最大为 50
+  string username = 1 [(validate.rules).string = {min_len: 3, max_len: 50}];
+  // 密码，限制最小长度为 6
+  string password = 2 [(validate.rules).string = {min_len: 6}];
+  // 确认密码字段，在 service 层验证一致性
+  string confirm_password = 3 [(validate.rules).string = {min_len: 6}];
+}
+
+// 用户注册响应消息
+message RegisterReply {
+  // 可以只返回一个成功消息，或者返回新创建用户的 ID
+  uint64 user_id = 1;
+  string message = 2; // 例如 "注册成功"
+}
+
+// 用户登录请求消息
+message LoginRequest {
+  string username = 1 [(validate.rules).string.min_len = 1];
+  string password = 2 [(validate.rules).string.min_len = 1];
+}
+
+// 用户登录响应消息
+message LoginReply {
+  // 登录成功后，通常会返回一个 token 用于后续认证，这里暂时只返回简单信息
+  uint64 user_id = 1;
+  string username = 2;
+  string message = 3; // 例如 "登录成功"
+  // string token = 4; // 实际应用中会返回 token
+} 
